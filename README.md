@@ -2,7 +2,7 @@
 
 ## 1. 개요
 
-(다이어그램)
+![스크린샷 2025-02-19 오전 12 30 49](https://github.com/user-attachments/assets/1990f22a-6438-4d4e-af04-3953c38a74ff)
 
 ### 사전 작업
 
