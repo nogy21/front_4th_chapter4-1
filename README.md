@@ -2,7 +2,16 @@
 
 ## 1. 개요
 
+다음은 GitHub Actions을 활용한 S3 + CloudFront 배포 파이프라인을 나타낸 다이어그램입니다.
+
 ![스크린샷 2025-02-19 오전 12 30 49](https://github.com/user-attachments/assets/1990f22a-6438-4d4e-af04-3953c38a74ff)
+
+이 배포 파이프라인은 다음과 같은 방식으로 동작합니다.
+
+1. **개발자가 코드를 GitHub 저장소에 푸시**하면, GitHub Actions가 자동으로 실행됩니다.
+2. GitHub Actions에서 **Next.js 프로젝트를 빌드**하고 정적 파일을 생성합니다.
+3. 빌드된 파일을 **S3에 업로드**하고, CloudFront의 캐시를 무효화하여 최신 버전을 제공할 수 있도록 합니다.
+4. 사용자는 CloudFront를 통해 **가장 가까운 엣지 서버에서 정적 콘텐츠를 빠르게 로드**할 수 있습니다.
 
 ### 사전 작업
 
@@ -19,17 +28,22 @@
    - GitHub Actions 환경 설정
    - 저장소 워크플로우 설정
 
-### 배포 과정
+### 배포 과정 (Step-by-Step)
 
-GitHub Actions에 워크플로우(`.github/workflows/deployment.yml`)를 작성해 다음과 같이 배포가 진행되도록 합니다.
+GitHub Actions을 활용하여 `.github/workflows/deployment.yml`을 작성하고, 배포는 다음 단계로 진행됩니다.
 
-1.  저장소를 체크아웃합니다. (`Checkout step`)
-2.  pnpm과 Node.js 18.x 버전을 구성합니다. (`Install pnpm, Setup Node.js step`)
-3.  프로젝트 의존성을 설치합니다. (`Install dependencies step`)
-4.  Next.js 프로젝트를 빌드합니다. (`Build step`)
-5.  AWS 자격 증명을 구성합니다. (`Configure AWS credentials step`)
-6.  빌드된 정적 파일을 S3에 업로드합니다. (`Deploy to S3 step`)
-7.  CloudFront 캐시를 무효화하여 최신 파일을 제공할 수 있도록 합니다. (`Invalidate CloudFront cache step`)
+#### **1. GitHub Actions (CI/CD 자동화)**
+
+1. **저장소에서 최신 코드 체크아웃** (`Checkout step`)
+2. **pnpm과 Node.js 18.x 버전 설치** (`Install pnpm, Setup Node.js step`)
+3. **프로젝트 의존성 설치** (`Install dependencies step`)
+4. **Next.js 프로젝트 빌드 (정적 파일 생성)** (`Build step`)
+
+#### **2. AWS 서비스 (S3 + CloudFront 배포)**
+
+5. **AWS 자격 증명 구성** (`Configure AWS credentials step`)
+6. **S3에 빌드된 정적 파일 업로드** (`Deploy to S3 step`)
+7. **CloudFront 캐시 무효화 (최신 파일 제공)** (`Invalidate CloudFront cache step`)
 
 <br>
 
@@ -44,9 +58,9 @@ GitHub Actions에 워크플로우(`.github/workflows/deployment.yml`)를 작성�
 
 ### GitHub Actions과 배포 자동화 (CD)
 
-- **GitHub Actions**을 활용해 코드가 `main` 브랜치에 푸시될 때 자동으로 배포가 실행되도록 설정.
-- **CD(Continuous Deployment, 지속적 배포) 파이프라인**을 통해 변경 사항이 감지되면 자동으로 S3에 업로드되고, CloudFront 캐시가 무효화됨.
-- 빌드된 정적 파일이 자동으로 배포되므로, **개발자가 배포 과정을 직접 수행할 필요가 없음**.
+- **GitHub Actions**을 활용하여 코드가 `main` 브랜치에 푸시될 때 **자동으로 빌드 및 배포**가 실행됩니다.
+- CI(Continuous Integration, 지속적 통합)는 포함되지 않으며, **CD(Continuous Deployment, 지속적 배포)만 수행**합니다.
+- 개발자가 직접 서버에 배포할 필요 없이, **S3에 정적 파일이 업로드되고 CloudFront 캐시가 갱신됩니다.**
 
 ### S3와 정적 사이트 배포
 
@@ -80,9 +94,17 @@ GitHub Actions에 워크플로우(`.github/workflows/deployment.yml`)를 작성�
 
 CDN을 도입한 후 페이지 로딩 속도 및 주요 성능 지표를 측정하여 비교했습니다.
 
-| 성능 지표                      | CDN 미적용 (S3 직접 제공) | CDN 적용 후 (CloudFront) | 개선율 |
-| ------------------------------ | ------------------------- | ------------------------ | ------ |
-| TTFB (Time to First Byte)      |                           |                          |        |
-| FCP (First Contentful Paint)   |                           |                          |        |
-| LCP (Largest Contentful Paint) |                           |                          |        |
-| Total Load Time                |                           |                          |        |
+| 성능 지표                      | CDN 미적용 (S3 직접 제공) | CDN 적용 후 (CloudFront) | 개선율   | 설명                                       |
+| ------------------------------ | ------------------------- | ------------------------ | -------- | ------------------------------------------ |
+| TTFB (Time to First Byte)      | 98ms                      | 35.08ms                  | 🔽 64.2% | 첫 바이트 도달 시간                        |
+| FCP (First Contentful Paint)   | 0.2s                      | 0.2s                     | 🚫 0%    | 첫 콘텐츠 렌더링 시간                      |
+| LCP (Largest Contentful Paint) | 0.6s                      | 0.3s                     | 🔽 50%   | 최대 콘텐츠 렌더링 시간                    |
+| TBT (Total Blocking Time)      | 480ms                     | 480ms                    | 🚫 0%    | 브라우저가 렌더링을 차단한 시간            |
+| CLS (Cumulative Layout Shift)  | 0.005                     | 0                        | 🔽 100%  | 레이아웃 이동 지표 (0에 가까울수록 안정적) |
+| SI (Speed Index)               | 0.8s                      | 0.4s                     | 🔽 50%   | 시각적 콘텐츠가 렌더링되는 속도            |
+
+### 🚀 **주요 개선 사항**
+
+- **TTFB(64.2% 개선)** → CloudFront의 캐싱으로 서버 응답 속도가 대폭 향상됨.
+- **LCP(50% 개선)** → 주요 콘텐츠가 더 빨리 로드되어 사용자 경험이 향상됨.
+- **CLS(100% 개선)** → 페이지 로딩 중 레이아웃 이동이 사라져 UX가 안정적임.
